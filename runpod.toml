@@ -1,0 +1,32 @@
+# RunPod Project Configuration
+
+tittle = "sdxl-Template"
+
+[project]
+uuid = "8eb56a8f"
+name = "sdxl-Template"
+base_image = "runpod/base:0.0.2"
+gpu_types = [
+    "NVIDIA RTX A4000",
+    "NVIDIA RTX A4500",
+    "NVIDIA RTX A5000",
+    "NVIDIA GeForce RTX 3090",
+    "NVIDIA RTX A6000",
+]
+gpu_count = 1
+storage_id = "bn4jhltn90"
+volume_mount_path = "/runpod-volume"
+ports = "8080/http, 22/tcp"
+container_disk_size_gb = 50
+
+[project.env_vars]
+RUNPOD_PROJECT_ID = "8eb56a8f"
+
+[template]
+model_type = "None"
+model_name = "None"
+
+[runtime]
+python_version = "3.10"
+handler_path = "src/handler.py"
+requirements_path = "builder/requirements.txt"

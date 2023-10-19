@@ -14,7 +14,7 @@
 
 
 #### Build an Image:
-`docker build -t <your_dockerhub_directory>/image_name:tag --build-arg HUGGING_FACE_HUB_WRITE_TOKEN=<your_token_value> .` 
+`docker build -t <your_dockerhub_directory>/image_name:tag --build-arg HUGGING_FACE_HUB_WRITE_TOKEN=<your_token_value> .`
 
 Please make sure to replace your_hugging_face_token_here with your actual Hugging Face token to enable model downloads that require it.
 
@@ -26,11 +26,14 @@ The following inputs can be used for testing the model:
 {
     "input": {
         "model_name": "/workspace/pretrained_model",
+        "vae_model_name": "/workspace/vae_model",
+        "dataset_zip_url": "https://example.com/dataset.zip",
         "dataset_directory_path": "/workspace/data/dataset",
         "output_directory": "/workspace/output",
         "instance_prompt": "a photo of <subject>",
         "batch_size": 32,
         "training_steps": 1000,
+        "hf_token": "<your_hugging_face_token_here>"
     }
 }
 
@@ -38,5 +41,3 @@ The following inputs can be used for testing the model:
 
 
 NOTE: This SDXL fine-tuning worker requires you to provide a folder containing the images of the new instance you'd like to include in the SDXL model. Additionally, we need to ensure that you provide an instance prompt with the following syntax: 'a photo of _subject_' where "subject" is the name of the item you want to use for fine-tuning the SDXL model (e.g., the images inside the dataset directory).
-
-
