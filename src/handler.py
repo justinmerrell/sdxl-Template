@@ -65,7 +65,7 @@ def handler(job):
     job_output = {}
 
     # most of the parameteres will be path (Network storage)
-    
+
     training_command = (
         "accelerate launch src/train_dreambooth_lora_sdxl.py "
         "--pretrained_model_name_or_path='stabilityai/stable-diffusion-xl-base-1.0' "
@@ -94,7 +94,7 @@ def handler(job):
         huggingface_login(hf_token)
         run_accelerate_config()
         output = subprocess.run(training_command, stderr=subprocess.STDOUT, text=True, shell=True, check=True)
-        
+
         # Return the output directory or a message indicating success
         job_output["output_directory"] == output_directory
         return job_output
