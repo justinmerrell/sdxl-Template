@@ -1,7 +1,9 @@
 import runpod
+from runpod.serverless.utils import rp_download
 import subprocess
 import os
 from huggingface_hub import snapshot_download
+import shutil
 
 def huggingface_login(token):
     try:
@@ -32,28 +34,16 @@ def run_accelerate_config():
         error_message = f"Error running accelerate config: {e}"
         print(error_message) 
 
-def download_dataset(dataset_name, local_dir="./"):
-    try:
-        full_local_dir = os.path.join(local_dir, dataset_name)
-        snapshot_download(dataset_name, local_dir=local_dir, repo_type="dataset", ignore_patterns=".gitattributes")
-        print(f"Downloaded '{dataset_name}' to '{local_dir}' successfully.")
-        return full_local_dir
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        return None
-
-
+MODEL_BASE_PATH = os.environ.get('MODEL_BASE_PATH', '/workspace/')
 def handler(job):
     '''
     This is the handler function that will be called by the serverless.
     '''
-
     job_input = job["input"]
+    job_id = job["id"]
 
     # Get the parameters from the job input
-    dataset_directory_path = job_input["dataset_directory_path"]
-    local_dataset_directory = job_input["local_directory"]
-    output_directory = job_input["output_directory"]
+    dataset_directory_path = job_input["dataset_url"]
     instance_prompt = job_input["instance_prompt"]
     batch_size = job_input["batch_size"]
     hf_token = job_input["hf_token"]
@@ -61,17 +51,43 @@ def handler(job):
     
     # example:  local_dataset_directory = "./dog"
 
-    dataset_path = download_dataset(dataset_directory_path, local_dir=local_dataset_directory)
+    
+
+     # -------------------------- Download Training Data -------------------------- #
+    downloaded_input = rp_download.file(dataset_directory_path)
+    print(f"Downloaded input: {downloaded_input}")
+    # Make clean data directory
+    allowed_extensions = [".jpg", ".jpeg", ".png"]
+    flat_directory = f"job_files/{job_id}/clean_data"
+    os.makedirs(flat_directory, exist_ok=True)
+
+    for root, dirs, files in os.walk(downloaded_input['extracted_path']):
+        # Skip __MACOSX folder
+        if '__MACOSX' in root:
+            continue
+
+        for file in files:
+            file_path = os.path.join(root, file)
+            if os.path.splitext(file_path)[1].lower() in allowed_extensions:
+                shutil.copy(
+                    os.path.join(downloaded_input['extracted_path'], file_path),
+                    flat_directory
+                )
+
+    os.makedirs(f"job_files/{job_id}", exist_ok=True)
+    os.makedirs(f"job_files/{job_id}/fine_tuned_model", exist_ok=True)
+
+    # -------------------------- Run Training -------------------------- #
     job_output = {}
 
     # most of the parameteres will be path (Network storage)
 
     training_command = (
-        "accelerate launch src/train_dreambooth_lora_sdxl.py "
+        "accelerate launch train_dreambooth_lora_sdxl.py "
         "--pretrained_model_name_or_path='stabilityai/stable-diffusion-xl-base-1.0' "
         "--pretrained_vae_model_name_or_path='madebyollin/sdxl-vae-fp16-fix' "
-        f"--instance_data_dir={dataset_path} "
-        f"--output_dir={output_directory} "
+        f"--instance_data_dir=job_files/{job_id}/clean_data "
+        f"--output_dir=outputjob_files/{job_id}/fine_tuned_model "
         "--mixed_precision=fp16 "
         f"--instance_prompt='{instance_prompt}' "
         "--resolution=1024 "
@@ -96,7 +112,7 @@ def handler(job):
         output = subprocess.run(training_command, stderr=subprocess.STDOUT, text=True, shell=True, check=True)
 
         # Return the output directory or a message indicating success
-        job_output["output_directory"] == output_directory
+        job_output = {"output_directory": f"job_files/{job_id}/fine_tuned_model"}
         return job_output
 
     except subprocess.CalledProcessError as e:
